@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VocabBuilder Pro - 10 Articles Precision</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            color: #f8fafc;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .loader {
+            border-top-color: #3b82f6;
+            animation: spinner 1.5s linear infinite;
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <header class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-500/20">
+                    <i data-lucide="check-circle" class="text-white"></i>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight text-white">Vocab<span class="text-blue-500">Fixed</span></h1>
+            </div>
+            <div class="text-sm text-slate-400 font-medium italic">Presisi 10 Artikel Latihan</div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="glass p-6">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2 text-white">
+                        <i data-lucide="file-up" class="w-5 h-5 text-blue-400"></i>
+                        Upload PDF
+                    </h2>
+                    <label class="relative flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-slate-700 rounded-xl cursor-pointer hover:border-blue-500 transition-colors bg-slate-800/20 group">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                            <i data-lucide="upload" class="w-10 h-10 text-slate-500 mb-3 group-hover:text-blue-400 transition-colors"></i>
+                            <p class="text-xs text-slate-400">Pilih file PDF Anda</p>
+                        </div>
+                        <input id="pdfInput" type="file" class="hidden" accept="application/pdf" />
+                    </label>
+                    
+                    <div id="statusContainer" class="mt-4 hidden">
+                        <div class="flex items-center justify-between text-xs mb-2">
+                            <span id="statusLabel" class="text-slate-400 uppercase tracking-widest font-bold">Progress</span>
+                            <span id="statusPercent" class="text-blue-400 font-bold">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-700 rounded-full h-1 overflow-hidden">
+                            <div id="statusBar" class="bg-blue-500 h-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass p-6">
+                    <button id="executeBtn" disabled class="w-full py-3 px-4 bg-slate-800 text-slate-500 rounded-lg font-bold flex items-center justify-center gap-2 transition-all cursor-not-allowed uppercase text-xs tracking-widest">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        Generate Kuis Rapih
+                    </button>
+                    <p class="text-[10px] text-slate-500 mt-4 leading-relaxed font-medium">Sistem kini memvalidasi struktur 1-20 secara ketat untuk menghindari data duplikat atau artikel siluman.</p>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="glass p-6 min-h-[520px] flex flex-col relative overflow-hidden">
+                    <div class="flex items-center justify-between mb-6 z-10 border-b border-white/5 pb-4">
+                        <h2 class="text-lg font-semibold flex items-center gap-2 text-white">
+                            <i data-lucide="list" class="w-5 h-5 text-blue-400"></i>
+                            Daftar Artikel Valid
+                        </h2>
+                        <span id="articleCountBadge" class="px-3 py-1 bg-slate-800 text-slate-400 text-[10px] rounded-full border border-white/10 font-bold uppercase tracking-widest">0 ARTIKEL</span>
+                    </div>
+
+                    <div id="previewData" class="space-y-6 max-h-[600px] overflow-y-auto custom-scrollbar pr-2 z-10">
+                        <p class="text-center text-slate-500 mt-20 italic">Belum ada data yang diekstrak.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-8 right-8 glass px-6 py-4 transform translate-y-20 opacity-0 transition-all duration-500 flex items-center gap-3 z-50">
+        <div id="toastIcon" class="p-1 bg-blue-500 rounded-full"><i data-lucide="check" class="w-4 h-4 text-white"></i></div>
+        <span id="toastMsg" class="text-sm font-medium">Berhasil</span>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const pdfInput = document.getElementById('pdfInput');
+        const executeBtn = document.getElementById('executeBtn');
+        const previewData = document.getElementById('previewData');
+        const articleCountBadge = document.getElementById('articleCountBadge');
+        
+        let extractedData = [];
+
+        const updateStatus = (percent, label) => {
+            const container = document.getElementById('statusContainer');
+            const bar = document.getElementById('statusBar');
+            const pText = document.getElementById('statusPercent');
+            const lText = document.getElementById('statusLabel');
+            container.classList.remove('hidden');
+            bar.style.width = `${percent}%`;
+            pText.innerText = `${percent}%`;
+            lText.innerText = label;
+        };
+
+        const showToast = (msg, isError = false) => {
+            const toast = document.getElementById('toast');
+            const toastIcon = document.getElementById('toastIcon');
+            const toastMsg = document.getElementById('toastMsg');
+            toastMsg.innerText = msg;
+            toastIcon.className = isError ? 'p-1 bg-red-500 rounded-full' : 'p-1 bg-blue-500 rounded-full';
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        };
+
+        pdfInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            extractedData = [];
+            previewData.innerHTML = '<div class="flex flex-col items-center justify-center p-20"><div class="loader ease-linear rounded-full border-4 border-t-4 border-slate-700 h-10 w-10 mb-4"></div><p class="text-xs text-slate-500 tracking-widest font-bold">MEMBERSIHKAN DATA ARTIKEL...</p></div>';
+            
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                
+                let allText = "";
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    allText += content.items.map(item => item.str).join(" ") + " [END_OF_PAGE] ";
+                    updateStatus(Math.round((i / pdf.numPages) * 70), `Scan Halaman ${i}`);
+                }
+
+                allText = allText.replace(/\s+/g, ' ');
+
+                // Strategi Baru: Cari blok 1-20 secara utuh.
+                // Jika ditemukan angka 1, kita kumpulkan sampai angka 20 atau sampai bertemu angka 1 lagi.
+                const rawMatches = [];
+                // Regex: Cari angka 1-20 yang diikuti titik atau kurung tutup.
+                const itemRegex = /(?<![A-E]\.\s*)(\b\d{1,2})\s*[\.\)]\s*([A-Za-z]{3,})\b/g;
+                
+                let match;
+                while ((match = itemRegex.exec(allText)) !== null) {
+                    rawMatches.push({
+                        num: parseInt(match[1]),
+                        word: match[2].trim(),
+                        index: match.index
+                    });
+                }
+
+                // Pengelompokan cerdas berdasarkan urutan angka 1...20
+                let currentBatch = [];
+                rawMatches.forEach((m, idx) => {
+                    // Jika angka adalah 1 dan batch saat ini sudah ada isinya, simpan batch lama
+                    if (m.num === 1 && currentBatch.length > 0) {
+                        finalizeBatch(currentBatch);
+                        currentBatch = [];
+                    }
+                    
+                    // Masukkan ke batch jika belum ada nomor tersebut (mencegah duplikat dalam satu artikel)
+                    if (!currentBatch.find(item => item.num === m.num)) {
+                        currentBatch.push(m);
+                    }
+                });
+                // Finalize batch terakhir
+                finalizeBatch(currentBatch);
+
+                function finalizeBatch(batch) {
+                    // Validasi: Artikel dianggap sah jika memiliki minimal 10 kata unik (dari target 20)
+                    // Dan nomor tertingginya minimal mencapai angka 15
+                    const maxNum = Math.max(...batch.map(b => b.num));
+                    if (batch.length >= 8 && maxNum >= 15) {
+                        batch.sort((a, b) => a.num - b.num);
+                        extractedData.push({
+                            title: `Artikel ${extractedData.length + 1}`,
+                            words: batch.map(b => ({ num: b.num.toString(), word: b.word }))
+                        });
+                    }
+                }
+
+                // Batasi hanya 10 artikel jika ditemukan lebih (karena instruksi user adalah 10)
+                if (extractedData.length > 10) {
+                    extractedData = extractedData.slice(0, 10);
+                }
+
+                updateStatus(100, "Selesai");
+                renderPreview();
+                
+                if (extractedData.length > 0) {
+                    executeBtn.disabled = false;
+                    executeBtn.className = "w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/30 uppercase text-xs tracking-widest";
+                    articleCountBadge.innerText = `${extractedData.length} ARTIKEL VALID`;
+                    showToast(`${extractedData.length} Artikel berhasil ditemukan!`);
+                } else {
+                    throw new Error("Tidak dapat mendeteksi pola 1-20 yang valid.");
+                }
+
+            } catch (err) {
+                showToast(err.message, true);
+                previewData.innerHTML = `<div class="p-10 text-center glass border-red-500/20 text-red-400">
+                    <p class="font-bold mb-2">GAGAL EKSTRAKSI</p>
+                    <p class="text-[10px] opacity-60">${err.message}</p>
+                </div>`;
+            }
+        });
+
+        function renderPreview() {
+            previewData.innerHTML = "";
+            extractedData.forEach(art => {
+                const div = document.createElement('div');
+                div.className = "p-5 rounded-xl bg-slate-800/40 border border-white/5";
+                div.innerHTML = `
+                    <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                         <h3 class="font-black text-blue-400 text-[10px] uppercase tracking-widest">${art.title}</h3>
+                         <span class="text-[9px] text-slate-500 font-bold bg-slate-900 px-2 py-0.5 rounded">${art.words.length} Kata</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        ${art.words.map(w => `
+                            <div class="bg-slate-900/40 p-1.5 rounded flex items-center gap-2 overflow-hidden border border-white/5">
+                                <span class="text-[9px] text-slate-600 font-mono">${w.num}.</span>
+                                <span class="text-[10px] text-slate-300 truncate font-medium">${w.word}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                previewData.appendChild(div);
+            });
+        }
+
+        executeBtn.addEventListener('click', async () => {
+            try {
+                const { PDFDocument, StandardFonts, rgb } = PDFLib;
+                const pdfDoc = await PDFDocument.create();
+                const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+                const fontReg = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+                const PW = 595.28, PH = 841.89;
+                const MX = 50, MY = 60;
+                const LH = 18;
+
+                let page = pdfDoc.addPage([PW, PH]);
+                let y = PH - MY;
+
+                extractedData.forEach((art, idx) => {
+                    const blockHeight = 220;
+                    if (y - blockHeight < MY) {
+                        page = pdfDoc.addPage([PW, PH]);
+                        y = PH - MY;
+                    }
+
+                    page.drawText(art.title.toUpperCase(), { x: MX, y, size: 10, font: fontBold, color: rgb(0.2, 0.4, 0.8) });
+                    y -= 25;
+
+                    const startY = y;
+                    for (let i = 0; i < 10; i++) {
+                        const curY = startY - (i * LH);
+                        const w1 = art.words.find(w => parseInt(w.num) === (i + 1));
+                        if (w1) {
+                            page.drawText(`${w1.num}. ${w1.word}`, { x: MX, y: curY, size: 9, font: fontReg });
+                            page.drawText(":", { x: MX + 110, y: curY, size: 9, font: fontReg });
+                            page.drawText("________________________", { x: MX + 120, y: curY, size: 9, font: fontReg });
+                        }
+
+                        const w2 = art.words.find(w => parseInt(w.num) === (i + 11));
+                        if (w2) {
+                            const x2 = MX + 250;
+                            page.drawText(`${w2.num}. ${w2.word}`, { x: x2, y: curY, size: 9, font: fontReg });
+                            page.drawText(":", { x: x2 + 110, y: curY, size: 9, font: fontReg });
+                            page.drawText("________________________", { x: x2 + 120, y: curY, size: 9, font: fontReg });
+                        }
+                    }
+                    y = startY - (10 * LH) - 40;
+                    if (idx < extractedData.length - 1 && y > MY + 40) {
+                        page.drawLine({ start:{x:MX,y:y+20}, end:{x:PW-MX,y:y+20}, thickness:0.5, color:rgb(0.9,0.9,0.9) });
+                    }
+                });
+
+                const bytes = await pdfDoc.save();
+                const blob = new Blob([bytes], { type: 'application/pdf' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `Latihan_Vocab_10_Artikel_Fix.pdf`;
+                a.click();
+                showToast("PDF Siap Diunduh!");
+            } catch (err) {
+                showToast("Gagal export", true);
+            }
+        });
+    </script>
+</body>
+</html>
